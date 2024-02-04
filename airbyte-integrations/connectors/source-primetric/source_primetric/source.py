@@ -165,7 +165,7 @@ class Worklogs(PrimetricStream):
 
 class ReportsCustom(PrimetricStream):
     def path(self, **kwargs) -> str:
-        return "custom/reports"
+        return "reports/custom"
 
 
 class SourcePrimetric(AbstractSource):
