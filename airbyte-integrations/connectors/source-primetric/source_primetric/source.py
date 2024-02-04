@@ -163,6 +163,11 @@ class Worklogs(PrimetricStream):
         return "worklogs"
 
 
+class ReportsCustom(PrimetricStream):
+    def path(self, **kwargs) -> str:
+        return "custom/reports"
+
+
 class SourcePrimetric(AbstractSource):
     @staticmethod
     def get_connection_response(config: Mapping[str, Any]):
@@ -222,4 +227,5 @@ class SourcePrimetric(AbstractSource):
             Skills(authenticator=authenticator),
             Timeoffs(authenticator=authenticator),
             Worklogs(authenticator=authenticator),
+            ReportsCustom(authenticator=authenticator),
         ]

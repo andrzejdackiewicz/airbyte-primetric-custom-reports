@@ -19,5 +19,5 @@ def test_streams(mocker):
     config_mock = MagicMock()
     SourcePrimetric.get_connection_response = MagicMock()
     streams = source.streams(config_mock)
-    expected_streams_number = 21
+    expected_streams_number = 22
     assert len(streams) == expected_streams_number
