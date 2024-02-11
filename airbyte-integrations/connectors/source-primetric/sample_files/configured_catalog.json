@@ -981,7 +981,7 @@
     },
     {
       "stream": {
-        "name": "reports_custom",
+        "name": "reports_custom_data",
         "json_schema": {
           "type": "object",
           "properties": {
@@ -989,14 +989,7 @@
               "type": "string",
               "format": "uuid"
             },
-            "manager_id": {
-              "type": ["null", "string"]
-            },
-            "updated_at": {
-              "type": ["null", "string"],
-              "format": "date-time"
-            },
-            "title": {
+            "data": {
               "type": ["null", "string"]
             }
           }

@@ -12,7 +12,7 @@ import requests
 from airbyte_cdk import AirbyteLogger
 from airbyte_cdk.sources import AbstractSource
 from airbyte_cdk.sources.streams import Stream
-from airbyte_cdk.sources.streams.http import HttpStream
+from airbyte_cdk.sources.streams.http import HttpStream, HttpSubStream
 from airbyte_cdk.sources.streams.http.auth import TokenAuthenticator
 
 
@@ -159,6 +159,10 @@ class Timeoffs(PrimetricStream):
 
 
 class Worklogs(PrimetricStream):
+    @property
+    def use_cache(self) -> bool:
+        return True
+
     def path(self, **kwargs) -> str:
         return "worklogs"
 
@@ -166,6 +170,15 @@ class Worklogs(PrimetricStream):
 class ReportsCustom(PrimetricStream):
     def path(self, **kwargs) -> str:
         return "reports/custom"
+
+
+class ReportsCustomData(HttpSubStream, ReportsCustom):
+    def __init__(self, authenticator, **kwargs):
+        super().__init__(parent=ReportsCustom, authenticator=authenticator, **kwargs)
+
+    def path(self, stream_state: Mapping[str, Any] = None, stream_slice: Mapping[str, Any] = None, next_page_token: Mapping[str, Any] = None
+    ) -> str:
+        return f"reports/custom/{stream_slice['parent']['uuid']}/data"
 
 
 class SourcePrimetric(AbstractSource):
@@ -204,6 +217,7 @@ class SourcePrimetric(AbstractSource):
         response.raise_for_status()
 
         authenticator = TokenAuthenticator(response.json()["access_token"])
+        # reportsCustom = ReportsCustom(authenticator=authenticator)
 
         return [
             Assignments(authenticator=authenticator),
@@ -228,4 +242,5 @@ class SourcePrimetric(AbstractSource):
             Timeoffs(authenticator=authenticator),
             Worklogs(authenticator=authenticator),
             ReportsCustom(authenticator=authenticator),
+            ReportsCustomData(authenticator=authenticator),
         ]

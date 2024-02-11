@@ -1,1 +1,5 @@
 -e .
+airbyte-cdk~=0.1
+requests-mock~=1.9.3
+pytest~=6.1
+pytest-mock~=3.6.1
