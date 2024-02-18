@@ -25,10 +25,10 @@ class PrimetricStream(HttpStream, ABC):
         return parse_qs(urlparse(next_page_url).query)
 
     def request_params(
-        self,
-        stream_state: Mapping[str, Any],
-        stream_slice: Mapping[str, Any] = None,
-        next_page_token: Mapping[str, Any] = None,
+            self,
+            stream_state: Mapping[str, Any],
+            stream_slice: Mapping[str, Any] = None,
+            next_page_token: Mapping[str, Any] = None,
     ) -> MutableMapping[str, Any]:
         return next_page_token
 
@@ -88,7 +88,6 @@ class OrganizationPositions(PrimetricStream):
 
 
 class OrganizationRagScopes(PrimetricStream):
-
     primary_key = "text"
 
     def path(self, **kwargs) -> str:
@@ -176,28 +175,31 @@ class ReportsCustomData(HttpSubStream, PrimetricStream):
     def __init__(self, authenticator, **kwargs):
         super().__init__(parent=ReportsCustom, authenticator=authenticator, **kwargs)
 
-    def path(self, stream_state: Mapping[str, Any] = None, stream_slice: Mapping[str, Any] = None, next_page_token: Mapping[str, Any] = None
-    ) -> str:
+    def path(self, stream_state: Mapping[str, Any] = None, stream_slice: Mapping[str, Any] = None,
+             next_page_token: Mapping[str, Any] = None
+             ) -> str:
         return f"reports/custom/{stream_slice['parent']['uuid']}/data"
 
-    #def stream_slices(
-    #self,
-    #sync_mode: SyncMode,
-    #cursor_field: List[str] = None,
-    #stream_state: Mapping[str, Any] = None,
-    #) -> Iterable[Optional[Mapping[str, Any]]]:
-    #    # gather parent stream records in full
-    #    slices = list(super().stream_slices(SyncMode.full_refresh, cursor_field, stream_state))
+    def stream_slices(
+            self,
+            sync_mode: SyncMode,
+            cursor_field: List[str] = None,
+            stream_state: Mapping[str, Any] = None,
+    ) -> Iterable[Optional[Mapping[str, Any]]]:
+        # gather parent stream records in full
+        parent_stream_slices = self.parent.stream_slices(
+            sync_mode=sync_mode, cursor_field=cursor_field, stream_state=stream_state
+        )
 
-    #    self.is_finished = False
-    #    for page in slices:
-    #        page_id = page["parent"]["id"]
-    #        self.block_id_stack.append(page_id)
+        # iterate over parent stream slices
+        for slice in parent_stream_slices:
 
-    #        # stream sync is finished when it is on the last slice
-    #        self.is_finished = page_id == slices[-1]["parent"]["id"]
+            parent_records = self.parent.read_records(
+                sync_mode=sync_mode, cursor_field=cursor_field, stream_slice=slice, stream_state=stream_state
+            )
 
-    #        yield {"page_id": page_id}
+            for record in parent_records:
+                yield {"parent": record}
 
 
 class SourcePrimetric(AbstractSource):
@@ -208,7 +210,8 @@ class SourcePrimetric(AbstractSource):
         client_secret = config["client_secret"]
         refresh_token = None
         headers = {"content-type": "application/x-www-form-urlencoded"}
-        data = {"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret, "refresh_token": refresh_token}
+        data = {"grant_type": "client_credentials", "client_id": client_id, "client_secret": client_secret,
+                "refresh_token": refresh_token}
 
         try:
             response = requests.request(method="POST", url=token_refresh_endpoint, data=data, headers=headers)
