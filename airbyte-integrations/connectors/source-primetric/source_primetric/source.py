@@ -172,13 +172,32 @@ class ReportsCustom(PrimetricStream):
         return "reports/custom"
 
 
-class ReportsCustomData(HttpSubStream, ReportsCustom):
+class ReportsCustomData(HttpSubStream, PrimetricStream):
     def __init__(self, authenticator, **kwargs):
         super().__init__(parent=ReportsCustom, authenticator=authenticator, **kwargs)
 
     def path(self, stream_state: Mapping[str, Any] = None, stream_slice: Mapping[str, Any] = None, next_page_token: Mapping[str, Any] = None
     ) -> str:
         return f"reports/custom/{stream_slice['parent']['uuid']}/data"
+
+    #def stream_slices(
+    #self,
+    #sync_mode: SyncMode,
+    #cursor_field: List[str] = None,
+    #stream_state: Mapping[str, Any] = None,
+    #) -> Iterable[Optional[Mapping[str, Any]]]:
+    #    # gather parent stream records in full
+    #    slices = list(super().stream_slices(SyncMode.full_refresh, cursor_field, stream_state))
+
+    #    self.is_finished = False
+    #    for page in slices:
+    #        page_id = page["parent"]["id"]
+    #        self.block_id_stack.append(page_id)
+
+    #        # stream sync is finished when it is on the last slice
+    #        self.is_finished = page_id == slices[-1]["parent"]["id"]
+
+    #        yield {"page_id": page_id}
 
 
 class SourcePrimetric(AbstractSource):
