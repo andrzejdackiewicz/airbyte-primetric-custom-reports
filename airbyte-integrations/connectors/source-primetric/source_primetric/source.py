@@ -14,6 +14,7 @@ from airbyte_cdk.sources import AbstractSource
 from airbyte_cdk.sources.streams import Stream
 from airbyte_cdk.sources.streams.http import HttpStream, HttpSubStream
 from airbyte_cdk.sources.streams.http.auth import TokenAuthenticator
+from airbyte_protocol.models import SyncMode
 
 
 class PrimetricStream(HttpStream, ABC):
@@ -76,7 +77,9 @@ class OrganizationIdentityProviders(PrimetricStream):
         return None
 
     def parse_response(self, response: str, **kwargs) -> Iterable[Mapping]:
-        yield from json.loads(response.text)
+        yield from json.loads({"data": response.text})
+        #yield {"data": response.text}
+        #yield [{"data": response.text}]
 
     def path(self, **kwargs) -> str:
         return "organization/identity_providers"
@@ -172,30 +175,36 @@ class ReportsCustom(PrimetricStream):
 
 
 class ReportsCustomData(HttpSubStream, PrimetricStream):
-    def __init__(self, authenticator, **kwargs):
-        super().__init__(parent=ReportsCustom, authenticator=authenticator, **kwargs)
+    def __init__(self, parent, authenticator, **kwargs):
+        super().__init__(parent=parent, authenticator=authenticator, **kwargs)
 
     def path(self, stream_state: Mapping[str, Any] = None, stream_slice: Mapping[str, Any] = None,
              next_page_token: Mapping[str, Any] = None
              ) -> str:
         return f"reports/custom/{stream_slice['parent']['uuid']}/data"
 
+    def parse_response(self, response: requests.Response, **kwargs) -> Iterable[Mapping]:
+        yield from [{"data": response.text}]
+
+    def next_page_token(self, response: requests.Response) -> Optional[Mapping[str, Any]]:
+        return None
+
     def stream_slices(
             self,
-            sync_mode: SyncMode,
+            sync_mode: SyncMode = SyncMode.full_refresh,
             cursor_field: List[str] = None,
             stream_state: Mapping[str, Any] = None,
     ) -> Iterable[Optional[Mapping[str, Any]]]:
         # gather parent stream records in full
+        #yield {"parent": {"uuid": "81eacb22-2242-4449-8c53-3e68b60468d4"}}
         parent_stream_slices = self.parent.stream_slices(
             sync_mode=sync_mode, cursor_field=cursor_field, stream_state=stream_state
         )
 
         # iterate over parent stream slices
-        for slice in parent_stream_slices:
-
+        for current_slice in parent_stream_slices:
             parent_records = self.parent.read_records(
-                sync_mode=sync_mode, cursor_field=cursor_field, stream_slice=slice, stream_state=stream_state
+                sync_mode=sync_mode, cursor_field=cursor_field, stream_slice=current_slice, stream_state=stream_state
             )
 
             for record in parent_records:
@@ -239,7 +248,7 @@ class SourcePrimetric(AbstractSource):
         response.raise_for_status()
 
         authenticator = TokenAuthenticator(response.json()["access_token"])
-        # reportsCustom = ReportsCustom(authenticator=authenticator)
+        reportsCustom = ReportsCustom(authenticator=authenticator)
 
         return [
             Assignments(authenticator=authenticator),
@@ -263,6 +272,7 @@ class SourcePrimetric(AbstractSource):
             Skills(authenticator=authenticator),
             Timeoffs(authenticator=authenticator),
             Worklogs(authenticator=authenticator),
-            ReportsCustom(authenticator=authenticator),
-            ReportsCustomData(authenticator=authenticator),
+            #ReportsCustom(authenticator=authenticator),
+            reportsCustom,
+            ReportsCustomData(parent=reportsCustom, authenticator=authenticator),
         ]
