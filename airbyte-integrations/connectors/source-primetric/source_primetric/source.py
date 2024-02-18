@@ -78,8 +78,6 @@ class OrganizationIdentityProviders(PrimetricStream):
 
     def parse_response(self, response: str, **kwargs) -> Iterable[Mapping]:
         yield from json.loads({"data": response.text})
-        #yield {"data": response.text}
-        #yield [{"data": response.text}]
 
     def path(self, **kwargs) -> str:
         return "organization/identity_providers"
@@ -196,7 +194,6 @@ class ReportsCustomData(HttpSubStream, PrimetricStream):
             stream_state: Mapping[str, Any] = None,
     ) -> Iterable[Optional[Mapping[str, Any]]]:
         # gather parent stream records in full
-        #yield {"parent": {"uuid": "81eacb22-2242-4449-8c53-3e68b60468d4"}}
         parent_stream_slices = self.parent.stream_slices(
             sync_mode=sync_mode, cursor_field=cursor_field, stream_state=stream_state
         )
@@ -272,7 +269,6 @@ class SourcePrimetric(AbstractSource):
             Skills(authenticator=authenticator),
             Timeoffs(authenticator=authenticator),
             Worklogs(authenticator=authenticator),
-            #ReportsCustom(authenticator=authenticator),
             reportsCustom,
             ReportsCustomData(parent=reportsCustom, authenticator=authenticator),
         ]
