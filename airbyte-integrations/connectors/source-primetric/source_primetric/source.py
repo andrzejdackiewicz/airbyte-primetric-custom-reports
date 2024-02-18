@@ -184,7 +184,7 @@ class ReportsCustomData(HttpSubStream, PrimetricStream):
         return f"reports/custom/{stream_slice['parent']['uuid']}/data"
 
     def parse_response(self, response: requests.Response, **kwargs) -> Iterable[Mapping]:
-        yield from [{"data": response.text}]
+        yield from [{"uuid": ''.join(response.url.split("custom/")[1].split("/data")[0]), "data": response.text}]
 
     def next_page_token(self, response: requests.Response) -> Optional[Mapping[str, Any]]:
         return None
