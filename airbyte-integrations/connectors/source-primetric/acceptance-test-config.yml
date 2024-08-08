@@ -7,7 +7,17 @@ tests:
   connection:
     - config_path: "secrets/config.json"
       status: "succeed"
-    - config_path: "integration_tests/invalid_config.json"
+    - config_path: "integration_tests/config_full_migration.json"
+      status: "failed"
+    - config_path: "integration_tests/config_migration_date.json"
+      status: "failed"
+    - config_path: "integration_tests/config_migration_days.json"
+      status: "failed"
+    - config_path: "integration_tests/invalid_config_no_migration_type.json"
+      status: "failed"
+    - config_path: "integration_tests/config_migration_date.json"
+      status: "failed"
+    - config_path: "integration_tests/config_migration_days.json"
       status: "failed"
   discovery:
     - config_path: "secrets/config.json"

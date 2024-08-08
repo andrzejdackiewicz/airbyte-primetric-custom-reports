@@ -5,6 +5,7 @@
 
 import json
 from abc import ABC
+from datetime import date, timedelta
 from typing import Any, Iterable, List, Mapping, MutableMapping, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
@@ -159,11 +160,18 @@ class Timeoffs(PrimetricStream):
 
 
 class Worklogs(PrimetricStream):
+    def __init__(self, authenticator, migration_method, migration_start_date):
+        super(PrimetricStream, self).__init__(authenticator)
+        self.migration_method = migration_method
+        self.migration_start_date = migration_start_date
+
     @property
     def use_cache(self) -> bool:
         return True
 
     def path(self, **kwargs) -> str:
+        if self.migration_method == 'Migration from date' or self.migration_method == 'Migration from X last days':
+            return "worklogs/?starts_at=" + self.migration_start_date
         return "worklogs"
 
 
@@ -209,6 +217,10 @@ class ReportsCustomData(HttpSubStream, PrimetricStream):
 
 
 class SourcePrimetric(AbstractSource):
+    def __init__(self):
+        self.migration_method = None
+        self.migration_start_date = None
+
     @staticmethod
     def get_connection_response(config: Mapping[str, Any]):
         token_refresh_endpoint = f'{"https://api.primetric.com/auth/token/"}'
@@ -244,6 +256,33 @@ class SourcePrimetric(AbstractSource):
         response = self.get_connection_response(config)
         response.raise_for_status()
 
+        migration_method = config["migration_type"]["method"]
+        print("migration_method: ", migration_method)
+
+        # TODO how shoud I call the migration methods is " " fine there or should it be cammelcase or with "_"???
+        # TODO renaming variables / migration types / spec.yaml
+
+        if migration_method == 'Full migration':
+            # TODO for testing, remove later
+            print("Full migration detected")
+        elif migration_method == "Migration from date":
+            self.migration_start_date = config["migration_type"]["starting_migration_date"]
+
+            # TODO for testing, remove later
+            print("Migration from date detected")
+            print("Migration start date is set for ", self.migration_start_date)
+
+        elif migration_method == "Migration from X last days":
+            last_days_to_migrate = config["migration_type"]["last_days_to_migrate"]
+            self.migration_start_date = date.today() - timedelta(days=last_days_to_migrate)
+
+            # TODO for testing, remove later
+            print("Migration from X last days detected")
+            print("Days to migrate is set for ", last_days_to_migrate)
+            print("Calculated starting date for migration ", self.migration_start_date)
+        else:
+            print("Warning unknown method detected ", migration_method)
+
         authenticator = TokenAuthenticator(response.json()["access_token"])
         reportsCustom = ReportsCustom(authenticator=authenticator)
 
@@ -268,7 +307,9 @@ class SourcePrimetric(AbstractSource):
             RagRatings(authenticator=authenticator),
             Skills(authenticator=authenticator),
             Timeoffs(authenticator=authenticator),
-            Worklogs(authenticator=authenticator),
+            Worklogs(authenticator=authenticator,
+                     migration_method=self.migration_method,
+                     migration_start_date=self.migration_start_date),
             reportsCustom,
             ReportsCustomData(parent=reportsCustom, authenticator=authenticator),
         ]
