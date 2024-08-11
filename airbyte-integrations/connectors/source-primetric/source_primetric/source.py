@@ -4,6 +4,7 @@
 
 
 import json
+import time
 from abc import ABC
 from datetime import date, timedelta
 from typing import Any, Iterable, List, Mapping, MutableMapping, Optional, Tuple
@@ -24,6 +25,7 @@ class PrimetricStream(HttpStream, ABC):
 
     def next_page_token(self, response: requests.Response) -> Optional[Mapping[str, Any]]:
         next_page_url = response.json()["next"]
+        SourcePrimetric.log("Calculated next_page_url: " + str(next_page_url))
         return parse_qs(urlparse(next_page_url).query)
 
     def request_params(
@@ -170,9 +172,24 @@ class Worklogs(PrimetricStream):
         return True
 
     def path(self, **kwargs) -> str:
-        if self.migration_method == 'Migration from date' or self.migration_method == 'Migration from X last days':
-            return "worklogs/?starts_at=" + self.migration_start_date
         return "worklogs"
+
+    def request_params(
+            self,
+            stream_state: Optional[Mapping[str, Any]],
+            stream_slice: Optional[Mapping[str, Any]] = None,
+            next_page_token: Optional[Mapping[str, Any]] = None,
+    ) -> MutableMapping[str, Any]:
+        request_params = {}
+        if self.migration_method == 'Migration from date' or self.migration_method == 'Migration from X last days':
+            request_params = {'starts_between_min': str(self.migration_start_date),
+                              'starts_between_max': str(date.today() + timedelta(days=1))
+                              }
+
+        request_params.update(next_page_token if next_page_token is not None else {})
+        SourcePrimetric.log("Updated params: " + str(request_params))
+
+        return request_params
 
 
 class ReportsCustom(PrimetricStream):
@@ -222,6 +239,17 @@ class SourcePrimetric(AbstractSource):
         self.migration_start_date = None
 
     @staticmethod
+    def log(message):
+        log_json = {"type": "LOG", "log": message}
+        print(json.dumps(log_json))
+
+    @staticmethod
+    def log_error(error_message):
+        current_time_in_ms = int(datetime.now().timestamp()) * 1000
+        log_json = {"type": "TRACE", "trace": {"type": "ERROR", "emitted_at": current_time_in_ms, "error": {"message": error_message}}}
+        print(json.dumps(log_json))
+
+    @staticmethod
     def get_connection_response(config: Mapping[str, Any]):
         token_refresh_endpoint = f'{"https://api.primetric.com/auth/token/"}'
         client_id = config["client_id"]
@@ -239,9 +267,10 @@ class SourcePrimetric(AbstractSource):
 
         return response
 
+    # TODO perhaps it is better to use AirbyteLogger for logging instead of my 2 methods?
+
     def check_connection(self, logger: AirbyteLogger, config: Mapping[str, Any]) -> Tuple[bool, any]:
         try:
-
             if not config["client_secret"] or not config["client_id"]:
                 raise Exception("Empty config values! Check your configuration file!")
 
@@ -256,32 +285,28 @@ class SourcePrimetric(AbstractSource):
         response = self.get_connection_response(config)
         response.raise_for_status()
 
-        migration_method = config["migration_type"]["method"]
-        print("migration_method: ", migration_method)
+        self.migration_method = config["migration_type"]["method"]
 
         # TODO how shoud I call the migration methods is " " fine there or should it be cammelcase or with "_"???
         # TODO renaming variables / migration types / spec.yaml
 
-        if migration_method == 'Full migration':
-            # TODO for testing, remove later
-            print("Full migration detected")
-        elif migration_method == "Migration from date":
+        if self.migration_method == 'Full migration':
+            SourcePrimetric.log("Full migration detected")
+        elif self.migration_method == "Migration from date":
             self.migration_start_date = config["migration_type"]["starting_migration_date"]
 
-            # TODO for testing, remove later
-            print("Migration from date detected")
-            print("Migration start date is set for ", self.migration_start_date)
+            SourcePrimetric.log("Migration from date detected")
+            SourcePrimetric.log("Migration start date is set for " + str(self.migration_start_date))
 
-        elif migration_method == "Migration from X last days":
-            last_days_to_migrate = config["migration_type"]["last_days_to_migrate"]
-            self.migration_start_date = date.today() - timedelta(days=last_days_to_migrate)
+        elif self.migration_method == "Migration from X last days":
+            self.last_days_to_migrate = config["migration_type"]["last_days_to_migrate"]
+            self.migration_start_date = date.today() - timedelta(days=self.last_days_to_migrate)
 
-            # TODO for testing, remove later
-            print("Migration from X last days detected")
-            print("Days to migrate is set for ", last_days_to_migrate)
-            print("Calculated starting date for migration ", self.migration_start_date)
+            SourcePrimetric.log("Migration from X last days detected.")
+            SourcePrimetric.log("Days to migrate is set for: " + str(self.last_days_to_migrate))
+            SourcePrimetric.log("Calculated starting date for migration: " + str(self.migration_start_date))
         else:
-            print("Warning unknown method detected ", migration_method)
+            SourcePrimetric.log_error("Unknown method detected: " + self.migration_method)
 
         authenticator = TokenAuthenticator(response.json()["access_token"])
         reportsCustom = ReportsCustom(authenticator=authenticator)
