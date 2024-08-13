@@ -4,7 +4,6 @@
 
 
 import json
-import time
 from abc import ABC
 from datetime import date, timedelta
 from typing import Any, Iterable, List, Mapping, MutableMapping, Optional, Tuple
@@ -25,7 +24,6 @@ class PrimetricStream(HttpStream, ABC):
 
     def next_page_token(self, response: requests.Response) -> Optional[Mapping[str, Any]]:
         next_page_url = response.json()["next"]
-        SourcePrimetric.log("Calculated next_page_url: " + str(next_page_url))
         return parse_qs(urlparse(next_page_url).query)
 
     def request_params(
@@ -185,9 +183,7 @@ class Worklogs(PrimetricStream):
             request_params = {'starts_between_min': str(self.migration_start_date),
                               'starts_between_max': str(date.today() + timedelta(days=1))
                               }
-
         request_params.update(next_page_token if next_page_token is not None else {})
-        SourcePrimetric.log("Updated params: " + str(request_params))
 
         return request_params
 
