@@ -170,7 +170,7 @@ class Worklogs(PrimetricStream):
         return True
 
     def path(self, **kwargs) -> str:
-        return "worklogs"
+        return "worklogs/worklogs_iterator"
 
     def request_params(
             self,
@@ -178,10 +178,13 @@ class Worklogs(PrimetricStream):
             stream_slice: Optional[Mapping[str, Any]] = None,
             next_page_token: Optional[Mapping[str, Any]] = None,
     ) -> MutableMapping[str, Any]:
-        request_params = {}
+        request_params = {
+            'page_size': 500
+        }
         if self.migration_method == 'Migration from date' or self.migration_method == 'Migration from X last days':
             request_params = {'starts_between_min': str(self.migration_start_date),
-                              'starts_between_max': str(date.today() + timedelta(days=1))
+                              'starts_between_max': str(date.today() + timedelta(days=1)),
+                              'page_size': 500
                               }
         request_params.update(next_page_token if next_page_token is not None else {})
 
