@@ -78,7 +78,7 @@ class OrganizationIdentityProviders(PrimetricStream):
         return None
 
     def parse_response(self, response: str, **kwargs) -> Iterable[Mapping]:
-        yield from json.loads({"data": response.text})
+        yield from json.loads(response)
 
     def path(self, **kwargs) -> str:
         return "organization/identity_providers"
@@ -143,7 +143,7 @@ class RagRatings(PrimetricStream):
         return None
 
     def parse_response(self, response: str, **kwargs) -> Iterable[Mapping]:
-        yield from json.loads(response.text)
+        yield from json.loads(response)
 
     def path(self, **kwargs) -> str:
         return "rag_ratings"
