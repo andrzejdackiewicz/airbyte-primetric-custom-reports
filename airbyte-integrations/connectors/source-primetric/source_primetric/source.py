@@ -77,8 +77,8 @@ class OrganizationIdentityProviders(PrimetricStream):
     def next_page_token(self, response: requests.Response) -> Optional[Mapping[str, Any]]:
         return None
 
-    def parse_response(self, response: str, **kwargs) -> Iterable[Mapping]:
-        yield from json.loads(response)
+    def parse_response(self, response: requests.Response, **kwargs) -> Iterable[Mapping]:
+        yield from json.loads(response.text)
 
     def path(self, **kwargs) -> str:
         return "organization/identity_providers"
@@ -142,8 +142,8 @@ class RagRatings(PrimetricStream):
     def next_page_token(self, response: requests.Response) -> Optional[Mapping[str, Any]]:
         return None
 
-    def parse_response(self, response: str, **kwargs) -> Iterable[Mapping]:
-        yield from json.loads(response)
+    def parse_response(self, response: requests.Response, **kwargs) -> Iterable[Mapping]:
+        yield from json.loads(response.text)
 
     def path(self, **kwargs) -> str:
         return "rag_ratings"
